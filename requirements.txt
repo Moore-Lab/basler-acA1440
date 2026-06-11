@@ -1,5 +1,5 @@
-# Basler camera bindings (requires Pylon runtime installed separately)
+# Basler camera bindings (requires the Pylon runtime installed separately)
 pypylon
 numpy
-# GUI / preview (framework TBD during planning)
+# Native test GUI + image/video I/O (OpenCV highgui, no Qt dependency)
 opencv-python
