@@ -26,5 +26,5 @@ pip install -r requirements.txt
 
 ## Status
 
-Scaffolding only — interface stubs in place, implementation pending. See the development
-plan in the parent `xsphere-daq` repo.
+Driver + test GUI implemented; hardware validation pending. Development is tracked in
+[`docs/session-log.md`](docs/session-log.md).
