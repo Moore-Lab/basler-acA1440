@@ -1,0 +1,5 @@
+# Basler camera bindings (requires Pylon runtime installed separately)
+pypylon
+numpy
+# GUI / preview (framework TBD during planning)
+opencv-python
