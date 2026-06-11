@@ -13,6 +13,38 @@ See the [README](../README.md) for goals and backend setup.
 
 ---
 
+## 2026-06-11 — Hardware validation PASS
+
+**Context.** Ran the module against real hardware, closing the baseline's open TODO.
+Environment: anaconda3 base, Python 3.13.5, pypylon OK, numpy 2.1.3, cv2 4.12.0.
+
+**Camera:** acA1440-220um, s/n 40103621, Basler. Sensor 1440×1080, Mono8.
+Exposure range 21 µs – 10 s. Frame-rate node range 0.0063 – 1e6 fps (the 1e6 is a
+nominal node max, not physically achievable — the real ceiling is bandwidth/readout).
+
+**`smoke_test.py`:** PASS. Exposure 2000 µs, target 60 fps → resulting 60.0 → **60.3 fps
+measured** over a 120-frame burst.
+
+**Max-fps check** (200 µs exposure, requested 1000 fps, full ROI): driver clamped to the
+achievable rate; `resulting_frame_rate()` estimated **227.7 fps** and the streaming
+`grab()` path **measured 227.7 fps** over 400 frames with no drops — at/above the spec
+"up to 220 fps." `ResultingFrameRate` node is present on this firmware (no Abs-suffix
+fallback needed); its estimate matched reality exactly.
+
+**Loose end resolved:** the crashed session had left an orphaned `python -m
+basler_acA1440.gui` process (PID 22636, started 1:32 PM) holding the camera
+*exclusively* — `connect()` failed with "Device is exclusively opened by another client"
+until it was terminated. Worth knowing: a crashed GUI keeps the USB3 camera locked until
+its process is killed.
+
+**Verdict:** driver validated end-to-end (connect, info, exposure/fps get/set/range,
+resulting-fps, streaming grab at full rate). Public surface is safe for the dock to
+depend on.
+
+**Next (basler):** GUI snapshot/record paths still only exercised by import, not a
+confirmed file write — optionally verify `s`/`r` produce valid TIFF/AVI. Otherwise this
+module is effectively done; activity moves up to the dock.
+
 ## 2026-06-11 — Session log started; implementation baseline
 
 **Context.** First logged session. Module is already implemented (last commit "Basler
