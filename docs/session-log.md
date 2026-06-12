@@ -13,6 +13,16 @@ See the [README](../README.md) for goals and backend setup.
 
 ---
 
+## 2026-06-12 — ROI / binning (Stage 2 Round B)
+
+- Added `roi_range` / `set_roi` / `get_roi` / `reset_roi` (uniform (x,y,w,h); zeros
+  offsets, sizes, then offsets — snapped to node increments via `_snap`) and
+  `binning_range` / `set_binning` / `get_binning` (BinningHorizontal/Vertical). Set
+  while not grabbing (the dock stops the engine first).
+- Validated: ROI exact to increments, frames grab at the new size; binning to 4×4.
+  Note the **true full sensor is 1456×1088** (the "1440" model name is nominal) —
+  `reset_roi` restores that.
+
 ## 2026-06-12 — Gain control (Stage 2 Round A)
 
 - Added `set_gain` / `get_gain` / `gain_range` (uses the `Gain` node, falls back to

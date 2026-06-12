@@ -20,6 +20,13 @@ from typing import Iterator, Optional, Tuple
 import pypylon.pylon as pylon
 
 
+def _snap(value: float, inc: int, lo: int, hi: int) -> int:
+    """Clamp ``value`` to ``[lo, hi]`` and snap to the nearest ``inc`` step from ``lo``."""
+    inc = inc or 1
+    v = max(lo, min(hi, int(value)))
+    return min(hi, lo + int(round((v - lo) / inc)) * inc)
+
+
 class BaslerACA1440:
     """Thin driver around a single Basler acA1440-220um.
 
@@ -185,6 +192,66 @@ class BaslerACA1440:
         if node is None:
             return (0.0, 0.0)
         return (float(node.GetMin()), float(node.GetMax()))
+
+    # --- region of interest / binning --------------------------------------
+    # ROI is expressed uniformly as (offset_x, offset_y, width, height). Must be
+    # set while not grabbing (the dock stops the engine first).
+    def roi_range(self) -> dict:
+        cam = self._require()
+        return {
+            "w_min": int(cam.Width.GetMin()), "w_max": int(cam.Width.GetMax()),
+            "w_inc": int(cam.Width.GetInc()),
+            "h_min": int(cam.Height.GetMin()), "h_max": int(cam.Height.GetMax()),
+            "h_inc": int(cam.Height.GetInc()),
+            "x_inc": int(cam.OffsetX.GetInc()), "y_inc": int(cam.OffsetY.GetInc()),
+        }
+
+    def set_roi(self, x: int, y: int, w: int, h: int) -> None:
+        """Set a centred-or-placed ROI, snapping to the camera's pixel increments."""
+        cam = self._require()
+        # Zero offsets first so the new size always fits, then size, then offsets.
+        cam.OffsetX.SetValue(0)
+        cam.OffsetY.SetValue(0)
+        cam.Width.SetValue(_snap(w, cam.Width.GetInc(), cam.Width.GetMin(), cam.Width.GetMax()))
+        cam.Height.SetValue(_snap(h, cam.Height.GetInc(), cam.Height.GetMin(), cam.Height.GetMax()))
+        cam.OffsetX.SetValue(_snap(x, cam.OffsetX.GetInc(), cam.OffsetX.GetMin(), cam.OffsetX.GetMax()))
+        cam.OffsetY.SetValue(_snap(y, cam.OffsetY.GetInc(), cam.OffsetY.GetMin(), cam.OffsetY.GetMax()))
+
+    def get_roi(self) -> Tuple[int, int, int, int]:
+        cam = self._require()
+        return (int(cam.OffsetX.GetValue()), int(cam.OffsetY.GetValue()),
+                int(cam.Width.GetValue()), int(cam.Height.GetValue()))
+
+    def reset_roi(self) -> None:
+        """Restore the full sensor region."""
+        cam = self._require()
+        cam.OffsetX.SetValue(0)
+        cam.OffsetY.SetValue(0)
+        cam.Width.SetValue(int(cam.Width.GetMax()))
+        cam.Height.SetValue(int(cam.Height.GetMax()))
+
+    def binning_range(self) -> Tuple[int, int]:
+        cam = self._require()
+        bx = getattr(cam, "BinningHorizontal", None)
+        by = getattr(cam, "BinningVertical", None)
+        return (int(bx.GetMax()) if bx is not None else 1,
+                int(by.GetMax()) if by is not None else 1)
+
+    def set_binning(self, bx: int, by: int) -> None:
+        """Set horizontal/vertical binning (resets ROI to the new full frame)."""
+        cam = self._require()
+        for node, val in ((getattr(cam, "BinningHorizontal", None), bx),
+                          (getattr(cam, "BinningVertical", None), by)):
+            if node is not None:
+                node.SetValue(int(min(max(val, node.GetMin()), node.GetMax())))
+        self.reset_roi()
+
+    def get_binning(self) -> Tuple[int, int]:
+        cam = self._require()
+        bx = getattr(cam, "BinningHorizontal", None)
+        by = getattr(cam, "BinningVertical", None)
+        return (int(bx.GetValue()) if bx is not None else 1,
+                int(by.GetValue()) if by is not None else 1)
 
     # --- acquisition -------------------------------------------------------
     def start(self, max_throughput: bool = False) -> None:
