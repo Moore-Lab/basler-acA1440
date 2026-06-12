@@ -148,11 +148,19 @@ class BaslerACA1440:
         return self.get_frame_rate()
 
     # --- acquisition -------------------------------------------------------
-    def start(self) -> None:
-        """Begin continuous grabbing (latest-image-only strategy)."""
+    def start(self, max_throughput: bool = False) -> None:
+        """Begin continuous grabbing.
+
+        ``max_throughput=True`` uses a queued (one-by-one) strategy so **no frames
+        are dropped** — for recording at the full data rate. ``False`` uses
+        latest-image-only for low-latency preview, where frames produced faster
+        than they are consumed are skipped.
+        """
         cam = self._require()
         if not cam.IsGrabbing():
-            cam.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+            strategy = (pylon.GrabStrategy_OneByOne if max_throughput
+                        else pylon.GrabStrategy_LatestImageOnly)
+            cam.StartGrabbing(strategy)
 
     def stop(self) -> None:
         """Stop continuous grabbing."""

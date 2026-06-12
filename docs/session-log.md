@@ -13,6 +13,18 @@ See the [README](../README.md) for goals and backend setup.
 
 ---
 
+## 2026-06-12 — No-drop start(); GUI is now a shared shell
+
+- `start(max_throughput=False)` added: `True` uses `GrabStrategy_OneByOne` (queued,
+  **no-drop**) for full-rate recording; `False` keeps `LatestImageOnly` for
+  low-latency preview. Used by the dock's `AcquisitionEngine`.
+- `gui.py` reduced from a standalone GUI to a **thin shell** over
+  `camera_dock.preview.run(BaslerACA1440())` — all GUI logic now lives once in the dock
+  (no duplication). The driver itself still never imports the dock (smoke test remains
+  standalone); only the GUI shell does, via a sys.path insert to the dock root.
+- Validated through the shared engine: **227.8 fps** acquisition while recording,
+  456/456 frames, **0 dropped** (see the dock log for full Stage 1 details).
+
 ## 2026-06-11 — Hardware validation PASS
 
 **Context.** Ran the module against real hardware, closing the baseline's open TODO.
