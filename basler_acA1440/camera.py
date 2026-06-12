@@ -61,6 +61,13 @@ class BaslerACA1440:
         except Exception:
             pass
 
+        # Disable auto exposure/gain so manual (slider / numeric) values stick.
+        for node_name in ("ExposureAuto", "GainAuto"):
+            try:
+                getattr(self._camera, node_name).SetValue("Off")
+            except Exception:
+                pass
+
     def disconnect(self) -> None:
         """Stop acquisition (if running) and release the camera."""
         if self._camera is None:
@@ -146,6 +153,38 @@ class BaslerACA1440:
                 except Exception:
                     continue
         return self.get_frame_rate()
+
+    # --- gain --------------------------------------------------------------
+    def _gain_node(self):
+        cam = self._require()
+        for name in ("Gain", "GainRaw"):
+            node = getattr(cam, name, None)
+            if node is not None:
+                return node
+        return None
+
+    def set_gain(self, value: float) -> None:
+        """Set gain in the camera's native units (dB for ``Gain``, raw for ``GainRaw``)."""
+        node = self._gain_node()
+        if node is None:
+            return
+        lo, hi = node.GetMin(), node.GetMax()
+        v = min(max(value, lo), hi)
+        try:
+            node.SetValue(float(v))
+        except Exception:
+            node.SetValue(int(round(v)))   # GainRaw is integer-valued
+
+    def get_gain(self) -> float:
+        node = self._gain_node()
+        return float(node.GetValue()) if node is not None else 0.0
+
+    def gain_range(self) -> Tuple[float, float]:
+        """``(min, max)`` gain; ``(0, 0)`` if the camera exposes no gain node."""
+        node = self._gain_node()
+        if node is None:
+            return (0.0, 0.0)
+        return (float(node.GetMin()), float(node.GetMax()))
 
     # --- acquisition -------------------------------------------------------
     def start(self, max_throughput: bool = False) -> None:
